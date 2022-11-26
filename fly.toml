@@ -1,0 +1,12 @@
+app = "FIXME" # update by running `fly deploy` before using
+kill_signal = "SIGINT"
+kill_timeout = 5
+processes = []
+
+[env]
+  # Example of setting an environment variable
+  GFC_LOG_LEVEL = "debug"
+
+[experimental]
+  allowed_public_ports = []
+  auto_rollback = true
