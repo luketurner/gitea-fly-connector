@@ -19,11 +19,11 @@ For a more detailed explanation, see [Usage](#usage).
 
 GFC is designed specifically to work with Fly.io's remote builder feature. No actual image building happens in the GFC container itself.
 
-GFC is MIT Licensed and is built as a "for-fun" project. GFC is written as [Clojure](https://clojure.org/) and run with [babashka](https://github.com/babashka/babashka).
+GFC is MIT Licensed and is built as a "for-fun" project. GFC is written in [Clojure](https://clojure.org/) and run with [babashka](https://github.com/babashka/babashka).
 
 ## Usage
 
-GFC is intended for running in the Fly.io cloud, but it can also be run in Docker and locally (without containers). All three usages are outlined below:
+GFC is intended for running in the Fly.io cloud, but it can also be run in Docker, or locally (i.e. without containers). All three usages are outlined below:
 
 ### Fly.io Setup
 
@@ -37,12 +37,14 @@ fly launch --no-deploy
 bash generate_webhook_secret.sh
 
 # Generats SSH keypair and adds it to Fly -- take note of SSH public key to put into Gitea
-# If you pass a DNS name as the first parameter, the script will use ssh-keyscan to read
-# the server's current host keys and configure GFC to use them.
 bash generate_deploy_keys.sh mygiteainstance.example.com
 
+# The update_host_keys.sh script will use ssh-keyscan to read the server's current host keys
+# and configure GFC to use them. Pass your Gitea server's hostname as the first argument:
+bash update_host_keys.sh mygiteainstance.example.com
+
 # This secret has to be generated in Fly dashboard -- will be used to deploy your apps
-fly secrets set GFC_FLY_TOKEN=MYTOKENHERE
+fly secrets set "GFC_FLY_TOKEN=MYTOKENHERE"
 
 # deploy the app
 fly deploy --remote-only
@@ -65,6 +67,8 @@ Then, in Gitea dashboard:
    - Active: checked!
 
 Finally, note that repos will only be deployed if there is a `fly.toml` in the checked-out commit's root directory.
+
+The [test-app](./test-app/) directory has a sample application (really just https://github.com/fly-apps/hello-static) that you can use to test your setup.
 
 ### Docker Setup
 
@@ -133,7 +137,7 @@ Incoming webhook requests from Gitea are authenticated using a pre-shared secret
 
 While processing the webhook request, it's necessary to "clone" (technically, fetch a single commit from) the remote Git repository that was pushed to. If all your Gitea repositories are public (i.e. support unauthenticated HTTP(S) access), you can set `GFC_GIT_USE_SSH=false` and skip the SSH key setup. Otherwise, you **must** configure both a private key for GFC to use, and an expected host key for the Gitea instance. There is currently no GFC option to disable strict host key checking.
 
-The SSH key setup is automated by the `generate_deploy_keys.sh` script. It can even grab the current SSH host key of your Gitea instance for you; see [Usage](#Usage) for details.
+The SSH key setup is automated by the `generate_deploy_keys.sh` script. Host keys can be set automatically with the `update_host_keys.sh` script. See [Usage](#Usage) for details.
 
 Also, GFC needs to authenticate with the Fly platform to trigger deployments. Under the hood, GFC runs `fly deploy --remote-only` from within the repository's root directory. This depends on a `GFC_FLY_TOKEN` secret variable that must be set manually using a token from the Fly.io dashboard.
 
