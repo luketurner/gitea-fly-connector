@@ -201,7 +201,7 @@ sequenceDiagram
    GFC->>+FlyB: fly deploy
    FlyB-->>GFC: 
    GFC-->>Gitea: Webhook response
-   Note over FlyB: Building image asynchronously...
+   Note over FlyB: Building image...
    FlyB->>-Fly: Deploys new version
 ```
 
