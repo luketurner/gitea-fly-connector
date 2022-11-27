@@ -28,10 +28,10 @@
          (for [{:keys [name docstring parse-fn default]} (get-all-envs)]
            (str
             "**" name "** "
-            (if (or parse-fn default)
+            (if (or parse-fn (some? default))
               (str "("
-                   (if parse-fn (str "parser: " parse-fn (if default "; " "")) "")
-                   (if default (str "default: " default "") "")
+                   (if parse-fn (str "parser: " parse-fn (if (some? default) "; " "")) "")
+                   (if (some? default) (str "default: " default "") "")
                    ")")
               "")
             "<br>" docstring "\n\n"))))

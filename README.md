@@ -154,11 +154,11 @@ The app could theoretically be run as a plain Clojure (non-Babashka) project as 
    there are at least this number of builds, future webhook build
    requests will receive a HTTP 429 status code.
 
-**GFC_DISABLE_DEPLOY** (parser: parse-boolean)<br>When set to `true`, builds will run as normal but the actual
+**GFC_DISABLE_DEPLOY** (parser: parse-boolean; default: false)<br>When set to `true`, builds will run as normal but the actual
    `fly deploy` step will be skipped. (Useful for low-consequences
    testing.)
 
-**GFC_DETACH_DEPLOY** (parser: parse-boolean)<br>When set to `true`, the `fly deploy` call will have `--detach` passed
+**GFC_DETACH_DEPLOY** (parser: parse-boolean; default: false)<br>When set to `true`, the `fly deploy` call will have `--detach` passed
    to it. This somewhat reduces UX; deploy errors aren't bubbled up as webhook
    errors, and the concurrent builds check becomes less meaningful. But if you
    have longer builds this might become a requirement to avoid timeouts.
