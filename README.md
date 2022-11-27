@@ -37,7 +37,7 @@ fly launch --no-deploy
 bash generate_webhook_secret.sh
 
 # Generats SSH keypair and adds it to Fly -- take note of SSH public key to put into Gitea
-bash generate_deploy_keys.sh mygiteainstance.example.com
+bash generate_deploy_keys.sh
 
 # The update_host_keys.sh script will use ssh-keyscan to read the server's current host keys
 # and configure GFC to use them. Pass your Gitea server's hostname as the first argument:
