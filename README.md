@@ -115,19 +115,53 @@ The app could theoretically be run as a plain Clojure (non-Babashka) project as 
 
 ## Environment variables
 
-- `GFC_PORT` (default: `8080`) -- Port to use when listening for HTTP requests.
-- `GFC_ALLOWED_REPO_RE` (default: `.*`) -- GFC will reject builds if the repository URL doesn't match this regex. 
-- `GFC_GIT_USE_SSH` (default: `true`) -- Uses Git SSH protocol to fetch repos data. Set to `false` to use unauthenticated HTTP(s) instead (works for public repos only). 
-- `GFC_MAIN_REF` (default: `refs/heads/main`) -- GFC will reject builds if the pushed ref doesn't match this value.
-- `GFC_REPO_CONFIG_FILE` (default: `gfc.yaml`) -- Name of config file within repos. (Currently, per-repo config is unused and this variable can be ignored.)
-- `GFC_WEBHOOK_SECRET` (default: none) -- Secret value used to verify Gitea webhook signatures. Should be the same value configured as the "Webhook secret" in gitea UI.
-- `GFC_SSH_PRIVATE_KEY` (default: none) -- A **base64-encoded** copy of the SSH private key for GFC to use to authenticate when using Git SSH. (If you have a private key, you can base64 encode it for this purpose using `base64 -w0 myfilename`)
-- `GFC_SSH_FINGERPRINT` (default: none) -- A purely informational variable, used to keep track of "which SSH key did I deploy it with again?" Expected to match what is contained in the Gitea UI.
-- `GFC_SSH_ALLOWED_HOSTS` (default: none) -- A **base64-encoded** list of newline-separated SSH host keys in the `known_hosts` file format. (If your Gitea is hosted at `git.example.com`, you can generate a value for this variable with `ssh-keyscan git.example.com | base64 -w0`)
-- `GFC_FLY_TOKEN` (default: none) -- The Fly.io access token used when deploying your app. Must be created in the Fly Web dashboard.
-- `GFC_MAX_PARALLEL_BUILDS` (default: `2`) -- the max. number of parallel builds to be running at once. If there are at least this number of builds, future webhook build requests will receive a HTTP 429 status code.
-- `GFC_DISABLE_DEPLOY` (default: `false`) -- When set to `true`, builds will run as normal but the actual `fly deploy` step will be skipped. (Useful for low-consequences testing.)
-- `GFC_LOG_LEVEL` (default: `info`) -- The minimum log level to display when running (one of: `trace`, `debug`, `info`, `warn`, `error`, `fatal`, `report`)
+<!-- gendocs section env -->
+
+**GFC_PORT** (parser: Integer/parseInt; default: 8080)<br>Port for the HTTP server to listen on.
+
+**GFC_ALLOWED_REPO_RE** (parser: re-pattern; default: (re-pattern ".*"))<br>GFC will reject builds if the repository URL doesn't match this regex.
+
+**GFC_GIT_USE_SSH** (parser: parse-boolean; default: true)<br>Uses Git SSH protocol to fetch repos data. Set to `false` to use
+   unauthenticated HTTP(s) instead (works for public repos only).
+
+**GFC_MAIN_REF** (default: refs/heads/main)<br>GFC will reject builds if the pushed ref doesn't match this value.
+
+**GFC_REPO_CONFIG_FILE** (default: gfc.yaml)<br>Name of config file within repos. (Currently, per-repo config is
+   unused and this variable can be ignored.)
+
+**GFC_WEBHOOK_SECRET** <br>Secret value used to verify Gitea webhook signatures. Should
+   be the same value configured as the "Webhook secret" in
+   your repository settings in Gitea's UI.
+
+**GFC_SSH_PRIVATE_KEY** (parser: b64decode)<br>A **base64-encoded** copy of the SSH private key for GFC to use
+   to authenticate when using Git SSH. If you have a private key,
+   you can base64 encode it for this purpose using
+   `base64 -w0 myfilename`.
+
+**GFC_SSH_KEY_FINGERPRINT** <br>A purely informational variable, used to keep track of "which
+   SSH key did I deploy it with again?" Expected to match what
+   is contained in the Gitea UI.
+
+**GFC_SSH_ALLOWED_HOSTS** (parser: b64decode)<br>A **base64-encoded** list of newline-separated SSH host keys
+   in the `known_hosts` file format. (If your Gitea is hosted at
+   `git.example.com`, you can generate a value for this variable
+   with `ssh-keyscan git.example.com | base64 -w0`)
+
+**GFC_FLY_TOKEN** <br>The Fly.io access token used when deploying your app. Must be
+   created in the Fly Web dashboard.
+
+**GFC_MAX_PARALLEL_BUILDS** (parser: Integer/parseInt; default: 2)<br>The max. number of parallel builds to be running at once. If
+   there are at least this number of builds, future webhook build
+   requests will receive a HTTP 429 status code.
+
+**GFC_DISABLE_DEPLOY** (parser: parse-boolean)<br>When set to `true`, builds will run as normal but the actual
+   `fly deploy` step will be skipped. (Useful for low-consequences
+   testing.)
+
+**GFC_LOG_LEVEL** (parser: keyword; default: :info)<br>The minimum log level to display when running (one of: `trace`,
+   `debug`, `info`, `warn`, `error`, `fatal`, `report`).
+
+<!-- gendocs section end -->
 
 ## Notes on Security
 
@@ -142,3 +176,34 @@ The SSH key setup is automated by the `generate_deploy_keys.sh` script. Host key
 Also, GFC needs to authenticate with the Fly platform to trigger deployments. Under the hood, GFC runs `fly deploy --remote-only` from within the repository's root directory. This depends on a `GFC_FLY_TOKEN` secret variable that must be set manually using a token from the Fly.io dashboard.
 
 Finally, a note on concurrent builds: To prevent you from accidentally DoSing yourself with too many requests, there is a configurable maximum number of concurrent builds before GFC starts returning 429s. This is not a security concern per se, but may help with misconfigurations. Requests that don't end up as builds (e.g. unauthorized, wrong pushed ref, etc.) don't affect this counter.
+
+# Development
+
+This section is for folks who want to hack on the GFC codebase!
+
+First off -- follow the instructions in [Local Setup](#local-setup) to run GFC locally for testing.
+
+When doing development, you can run GFC with the `--dev` flag, e.g.:
+
+```bash
+bb gfc.clj --dev
+```
+
+This disables the endpoint authorization checks which are pretty tedious to deal with in development. (Since the authorization is based on a HMAC signature of the request body, you would need to recalculate the signature each time you want to send a different request, even if the pre-shared key is the same.)
+
+Also, note that although Gitea sends plenty of metadata in requests, GFC only uses the following:
+
+1. Request headers:
+   1. `x-gitea-signature`
+   2. `x-gitea-event-type`
+   3. `x-gitea-delivery`
+2. A JSON request body with:
+   1. `repository.ssh_url` if GIT_USE_SSH is true
+   2. `repository.clone_url` if GIT_USE_SSH is false
+   3. `after` (the commit SHA to build)
+   4. `ref` (the ref name, e.g. `refs/heads/main`)
+
+A few other notes:
+
+1. The environment variables used are defined with a `defenv` macro. This isn't just to make GFC code more readable -- the interface of the defenv macro is also parsed by the `gendocs.clj` script to generate Markdown documentation for all the variables.
+2. Relatedly, any `<!-- gendocs section -->` blocks defined in the README are auto-generated by the `gendocs.clj` script and shouldn't be edited by hand. Run `bb gendocs.clj` to update the sections. 
