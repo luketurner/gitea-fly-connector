@@ -122,6 +122,14 @@
   :parse-fn parse-boolean
   :default false)
 
+(defenv DETACH_DEPLOY
+  "When set to `true`, the `fly deploy` call will have `--detach` passed
+   to it. This somewhat reduces UX; deploy errors aren't bubbled up as webhook
+   errors, and the concurrent builds check becomes less meaningful. But if you
+   have longer builds this might become a requirement to avoid timeouts."
+  :parse-fn parse-boolean
+  :default false)
+
 (defenv LOG_LEVEL
   "The minimum log level to display when running (one of: `trace`,
    `debug`, `info`, `warn`, `error`, `fatal`, `report`)."
@@ -222,8 +230,8 @@
   (if DISABLE_DEPLOY
     (info "Skipping deployment since" (env-var-name "DISABLE_DEPLOY") "is set.")
     (do
-      (debug "fly" "deploy" "--remote-only")
-      (lsh "fly" "deploy" "--remote-only"
+      (debug "fly" "deploy" "--remote-only" (if DETACH_DEPLOY "--detach" ""))
+      (lsh "fly" "deploy" "--remote-only" (if DETACH_DEPLOY "--detach" "")
            :env {"FLY_API_TOKEN" FLY_TOKEN
                  "HOME" remote-home-dir
                  "PATH" "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"}
@@ -357,6 +365,7 @@
 (info "  Repo config filename:" REPO_CONFIG_FILE)
 (info "   Max parallel builds:" MAX_PARALLEL_BUILDS)
 (info "       Deploys enabled:" (not DISABLE_DEPLOY))
+(info "  Deploys are detached:" DETACH_DEPLOY)
 (info "             Log level:" LOG_LEVEL)
 (info)
 (info "Secrets:")
